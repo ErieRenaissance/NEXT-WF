@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXT Industries Manufacturing Lifecycle Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="sh-brand">NEXT <span>Industries</span></div>
+    <div class="sh-meta">
+      <span class="sh-meta-item">Manufacturing Lifecycle Flow</span>
+    </div>
+  </div>
+</header>
+<div class="sh-subtitle">
+  <span>Raw Stock → Finished Part</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>9 Phases</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>15 Automation Enhancements</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>6 Closed-Loop Controls</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>20 Quality Gates</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>Crawl · Walk · Run Phasing</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>CONFIDENTIAL</span>
+</div>
+
+<!-- MASTER PIPELINE -->
+<div class="section section-alt">
+  <div class="section-title">Master Process Pipeline</div>
+  <div class="section-sub">Click any phase to expand details below</div>
+  <div class="pipeline-wrap">
+    <div class="pipeline" id="pipeline"></div>
+  </div>
+  <div class="phase-detail" id="phaseDetail" style="display:none"></div>
+</div>
+
+<!-- CRAWL / WALK / RUN PHASING -->
+<div class="section">
+  <div class="section-title">Autonomy Phasing: Crawl / Walk / Run</div>
+  <div class="section-sub">Switch phases to highlight every activity that still needs a human. The production path itself reaches full autonomy by the walk phase. What stays manual after that is structural: physical material handoffs, customer decisions, governance approvals, and maintenance.</div>
+  <div class="cwr-wrap">
+    <div class="cwr-tabs" id="cwrTabs"></div>
+    <div class="cwr-banner" id="cwrBanner"></div>
+    <div class="cwr-controls">
+      <div class="cwr-ctrl-l">
+        <span class="cwr-ctrl-lbl">Highlight by autonomy</span>
+        <div class="cwr-seg" id="cwrSeg">
+          <button data-v="all" class="on">All (default)</button>
+          <button data-v="autonomous">Autonomous</button>
+          <button data-v="supervised">Supervised</button>
+          <button data-v="manual">Manual</button>
+          <button data-v="sup_auto">Supervised &amp; Autonomous</button>
+        </div>
+      </div>
+      <div class="cwr-legend">
+        <span class="cwr-leg"><span class="cwr-leg-dot pos"></span>Autonomous and Supervised (shared color)</span>
+        <span class="cwr-leg"><span class="cwr-leg-dot man"></span>Manual</span>
+        <span class="cwr-leg"><span class="cwr-leg-dot faint"></span>De-emphasized by current view</span>
+      </div>
+    </div>
+    <div class="cwr-body" id="cwrBody"></div>
+  </div>
+  <div class="cwr-modal" id="cwrModal">
+    <div class="cwr-modal-box">
+      <div class="cwr-modal-head">
+        <div><div class="cwr-modal-tag">Why supervised</div><div class="cwr-modal-title" id="cwrModalTitle"></div></div>
+        <button class="cwr-modal-x" id="cwrModalX" aria-label="Close">&times;</button>
+      </div>
+      <div class="cwr-modal-body" id="cwrModalBody"></div>
+      <div class="cwr-modal-foot" id="cwrModalFoot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- AE INDEX -->
+<div class="section">
+  <div class="section-title">Automation Enhancement Index</div>
+  <div class="section-sub">15 automation enhancements + ZPC pallet system + form-clamp Op1 stamping/vise + PA-CF Op2 conformal jaws + autonomous bead-blast finishing</div>
+  <table class="ae-table">
+    <thead><tr><th>ID</th><th>Enhancement</th><th>Phase</th><th>Key Change</th></tr></thead>
+    <tbody id="aeBody"></tbody>
+  </table>
+</div>
+
+<!-- CLOSED LOOP CONTROLS -->
+<div class="section section-alt">
+  <div class="section-title">Closed-Loop Control Mechanisms</div>
+  <div class="section-sub">Six autonomous feedback loops that correct process variables in real time without human intervention</div>
+  <div class="cl-grid" id="clGrid"></div>
+</div>
+
+<!-- TWO-COLUMN: AUTONOMY + HITL -->
+<div class="section">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <div class="section-title" style="font-size:18px">Fully Autonomous Operations</div>
+      <div class="section-sub">No human intervention required in steady-state</div>
+      <div style="font-size:12px;color:var(--dim);line-height:1.8;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px" id="autoList"></div>
+    </div>
+    <div>
+      <div class="section-title" style="font-size:18px">Human-in-the-Loop Requirements</div>
+      <div class="section-sub">Activities that still require human judgment or physical action</div>
+      <table class="hitl-table" id="hitlTable">
+        <thead><tr><th>Activity</th><th>Reason</th></tr></thead>
+        <tbody id="hitlBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SAFETY INTERLOCKS -->
+<div class="section section-alt">
+  <div class="section-title">Safety Interlocks</div>
+  <div class="section-sub">Hardware-enforced — cannot be overridden by automation logic under any condition</div>
+  <table class="safety-table">
+    <thead><tr><th>Interlock</th><th>Trigger Condition</th><th>System Action</th></tr></thead>
+    <tbody id="safetyBody"></tbody>
+  </table>
+</div>
+
+<footer class="footer">
+  <span><span class="footer-conf">CONFIDENTIAL</span> — NEXT Industries Internal Use Only</span>
+</footer>
+
+
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
