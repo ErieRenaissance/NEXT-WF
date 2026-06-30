@@ -1,20 +1,29 @@
+/* NEXT Industries - Manufacturing Lifecycle Flow (Crawl/Walk/Run)
+   Logic layer. Depends on data.js (must load first). */
+
 let openPhase = null;
+
+function markerBadge(m){
+  const map={
+    split:['SPLIT','mk-split'], gate:['GATE','mk-gate'], handoff:['HUMAN HANDOFF','mk-handoff']
+  };
+  if(!m||!map[m]) return '';
+  return `<span class="mk ${map[m][1]}">${map[m][0]}</span>`;
+}
 
 function buildPipeline(){
   const pipe = document.getElementById('pipeline');
   PHASES.forEach((ph,i)=>{
-    let tags='';
-    ph.qg.forEach(q=>tags+=`<span class="ptag ptag-qg">${q}</span>`);
-    ph.ae.forEach(a=>tags+=`<span class="ptag ptag-ae">${a}</span>`);
+    const mk = ph.m ? markerBadge(ph.m) : '';
     const card = document.createElement('div');
     card.className='pipe-phase';
-    card.innerHTML=`<div class="pipe-card" data-id="${ph.id}"><div class="pipe-letter">${ph.id}</div><div class="pipe-name">${ph.name}</div><div class="pipe-tags">${tags}</div></div>`;
+    card.innerHTML=`<div class="pipe-card" data-id="${ph.id}"><div class="pipe-letter">${ph.id}</div><div class="pipe-name">${ph.name}</div><div class="pipe-tags">${mk}</div></div>`;
     card.querySelector('.pipe-card').addEventListener('click',()=>togglePhase(ph.id));
     pipe.appendChild(card);
     if(i<PHASES.length-1){
       const arr=document.createElement('div');
       arr.className='pipe-arrow';
-      arr.textContent='›';
+      arr.textContent=String.fromCharCode(8250);
       pipe.appendChild(arr);
     }
   });
@@ -33,29 +42,39 @@ function togglePhase(id){
     c.classList.toggle('active',c.dataset.id===id);
   });
   const ph=PHASES.find(p=>p.id===id);
-  let tags='';
-  ph.qg.forEach(q=>tags+=`<span class="pd-tag qg">${q}</span>`);
-  ph.ae.forEach(a=>tags+=`<span class="pd-tag ae">${a}</span>`);
-  let sps='';
-  ph.subprocs.forEach(sp=>{
-    const aeTag=sp.ae?`<span class="pd-sp-ae">${sp.ae}</span>`:'';
-    sps+=`<div class="pd-sp ${sp.cls}"><div class="pd-sp-header"><span class="pd-sp-id">${sp.id}</span><span class="pd-sp-badge ${sp.badgeCls}">${sp.badge}</span>${aeTag}</div><div class="pd-sp-desc"><strong style="font-size:12px">${sp.name}</strong> — ${sp.desc}</div></div>`;
+  let subs='';
+  ph.subs.forEach(sp=>{
+    if(sp.m==='track'){
+      subs+=`<div class="pd-track">${sp.t}</div>`;
+      return;
+    }
+    subs+=`<div class="pd-sub ${['split','gate','handoff'].includes(sp.m)?('m-'+sp.m):''}"><div class="pd-sub-head"><span class="pd-sub-id">${sp.id}</span>${markerBadge(sp.m)}</div><div class="pd-sub-text">${sp.t}</div></div>`;
   });
   detail.style.display='block';
   detail.innerHTML=`
     <div class="pd-header">
       <div class="pd-letter">${ph.id}</div>
-      <div class="pd-info"><div class="pd-name">${ph.name}</div><div class="pd-tags">${tags}</div></div>
+      <div class="pd-info"><div class="pd-name">${ph.name}</div><div class="pd-tags">${markerBadge(ph.m)}</div></div>
     </div>
-    <div class="pd-body">
-      <div class="pd-io"><div class="pd-io-label">Phase Input</div><div class="pd-io-text">${ph.input}</div></div>
-      <div class="pd-io"><div class="pd-io-label">Phase Output</div><div class="pd-io-text">${ph.output}</div></div>
-    </div>
+    <div class="pd-role">${ph.role}</div>
     <div class="pd-subprocs">
-      <div class="pd-sp-title">L2 Subprocesses</div>
-      <div class="pd-sp-grid">${sps}</div>
+      <div class="pd-sp-title">Sub-steps (corrected sequence)</div>
+      <div class="pd-sub-list">${subs}</div>
     </div>`;
   detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function buildWrapGroups(){
+  const cont=document.getElementById('contGrid');
+  cont.innerHTML=CONTINUOUS_LAYERS.map(l=>{
+    const items=l.subs.map(s=>`<li>${s}</li>`).join('');
+    return `<div class="wrap-card cont"><div class="wrap-head"><span class="wrap-id">${l.id}</span><span class="wrap-name">${l.name}</span>${markerBadge(l.m)}</div><ul class="wrap-list">${items}</ul></div>`;
+  }).join('');
+  const bg=document.getElementById('bgGrid');
+  bg.innerHTML=BACKGROUND_PROCESSES.map(l=>{
+    const items=l.subs.map(s=>`<li>${s}</li>`).join('');
+    return `<div class="wrap-card bg"><div class="wrap-head"><span class="wrap-id">${l.id}</span><span class="wrap-name">${l.name}</span>${markerBadge(l.m)}</div><ul class="wrap-list">${items}</ul></div>`;
+  }).join('');
 }
 
 function buildAE(){
@@ -108,8 +127,6 @@ function buildAutoList(){
 }
 
 /* ===== CRAWL / WALK / RUN PHASING ===== */
-
-// status per phase: 'man' = manual, 'sup' = supervised, 'auto' = autonomous. who = NEXT or Customer.
 
 let cwrPhase = 'crawl';
 let cwrView = 'all';   // all | autonomous | supervised | manual | sup_auto
@@ -199,7 +216,7 @@ function renderPhasing(){
     el.classList.add(pos?'st-pos':'st-man');
     el.classList.add(cwrEmph(st)?'emph':'dim');
     const badge=el.querySelector('.cwr-badge');
-    badge.className='cwr-badge '+(pos?'b-pos':'b-man');
+    badge.className='cwr-badge '+(st==='auto'?'b-pos':st==='sup'?'b-sup':'b-man');
     badge.textContent=CWR_BADGE[st];
     const info=el.querySelector('.cwr-info');
     info.style.display=(st==='sup'&&r.supRsn)?'flex':'none';
@@ -219,12 +236,11 @@ function renderPhasing(){
     </div>`;
 }
 
-document.addEventListener('DOMContentLoaded', function(){
-  buildPipeline();
-  buildAE();
-  buildCL();
-  buildHITL();
-  buildSafety();
-  buildAutoList();
-  buildPhasing();
-});
+buildPipeline();
+buildWrapGroups();
+buildAE();
+buildCL();
+buildHITL();
+buildSafety();
+buildAutoList();
+buildPhasing();
