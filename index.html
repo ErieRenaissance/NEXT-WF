@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NEXT Industries Manufacturing Lifecycle Flow</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -22,7 +20,11 @@
 <div class="sh-subtitle">
   <span>Raw Stock → Finished Part</span>
   <div class="sh-subtitle-divider"></div>
-  <span>9 Phases</span>
+  <span>14 Per-Order Stages</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>4 Continuous Layers</span>
+  <div class="sh-subtitle-divider"></div>
+  <span>3 Background Processes</span>
   <div class="sh-subtitle-divider"></div>
   <span>15 Automation Enhancements</span>
   <div class="sh-subtitle-divider"></div>
@@ -38,17 +40,32 @@
 <!-- MASTER PIPELINE -->
 <div class="section section-alt">
   <div class="section-title">Master Process Pipeline</div>
-  <div class="section-sub">Click any phase to expand details below</div>
+  <div class="section-sub">Corrected per-order lifecycle (Stages 0 to 13). Supersedes the prior linear Phase A to I tree. Click any stage to expand its corrected sub-steps. Change markers: SPLIT, GATE, HUMAN HANDOFF.</div>
   <div class="pipeline-wrap">
     <div class="pipeline" id="pipeline"></div>
   </div>
   <div class="phase-detail" id="phaseDetail" style="display:none"></div>
 </div>
 
+<!-- CONTINUOUS LAYERS + STANDING BACKGROUND PROCESSES -->
+<div class="section">
+  <div class="section-title">Continuous Layers and Standing Background Processes</div>
+  <div class="section-sub">These are not sequential stages. The continuous layers wrap every stage of the per-order lifecycle below. The standing background processes run ahead of and alongside any single order. Separating them from the per-order path is the core correction in this revision.</div>
+  <div class="wrap-block">
+    <div class="wrap-block-label cont-label">Continuous Layers (wrap every stage)</div>
+    <div class="wrap-grid" id="contGrid"></div>
+  </div>
+  <div class="wrap-block">
+    <div class="wrap-block-label bg-label">Standing Background Processes (run ahead of demand)</div>
+    <div class="wrap-grid" id="bgGrid"></div>
+  </div>
+</div>
+
+
 <!-- CRAWL / WALK / RUN PHASING -->
 <div class="section">
   <div class="section-title">Autonomy Phasing: Crawl / Walk / Run</div>
-  <div class="section-sub">Switch phases to highlight every activity that still needs a human. The production path itself reaches full autonomy by the walk phase. What stays manual after that is structural: physical material handoffs, customer decisions, governance approvals, and maintenance.</div>
+  <div class="section-sub">Validated autonomy phasing for the core production path. Group labels are aligned to the corrected stage numbering. Activities newly added by the corrected tree (export-control screening, job-engineering proveout, outside processing, nonconformance handling, tooling staging, post-delivery) are not yet classified here and are pending autonomy calls. Switch phases to highlight every activity that still needs a human; the production path reaches full autonomy by the walk phase, and what stays manual after that is structural: physical material handoffs, customer decisions, governance approvals, and maintenance.</div>
   <div class="cwr-wrap">
     <div class="cwr-tabs" id="cwrTabs"></div>
     <div class="cwr-banner" id="cwrBanner"></div>
@@ -64,7 +81,8 @@
         </div>
       </div>
       <div class="cwr-legend">
-        <span class="cwr-leg"><span class="cwr-leg-dot pos"></span>Autonomous and Supervised (shared color)</span>
+        <span class="cwr-leg"><span class="cwr-leg-dot pos"></span>Autonomous</span>
+        <span class="cwr-leg"><span class="cwr-leg-dot sup"></span>Supervised</span>
         <span class="cwr-leg"><span class="cwr-leg-dot man"></span>Manual</span>
         <span class="cwr-leg"><span class="cwr-leg-dot faint"></span>De-emphasized by current view</span>
       </div>
@@ -122,7 +140,7 @@
 <!-- SAFETY INTERLOCKS -->
 <div class="section section-alt">
   <div class="section-title">Safety Interlocks</div>
-  <div class="section-sub">Hardware-enforced — cannot be overridden by automation logic under any condition</div>
+  <div class="section-sub">Hardware-enforced. Cannot be overridden by automation logic under any condition</div>
   <table class="safety-table">
     <thead><tr><th>Interlock</th><th>Trigger Condition</th><th>System Action</th></tr></thead>
     <tbody id="safetyBody"></tbody>
@@ -130,9 +148,8 @@
 </div>
 
 <footer class="footer">
-  <span><span class="footer-conf">CONFIDENTIAL</span> — NEXT Industries Internal Use Only</span>
+  <span><span class="footer-conf">CONFIDENTIAL</span>. NEXT Industries Internal Use Only</span>
 </footer>
-
 
 <script src="js/data.js"></script>
 <script src="js/main.js"></script>
