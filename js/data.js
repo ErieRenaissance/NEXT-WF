@@ -1,89 +1,232 @@
+/* NEXT Industries - Manufacturing Lifecycle Flow (Crawl/Walk/Run)
+   Data layer. Loaded before main.js. */
+
 const PHASES = [
-  {id:'A',name:'Material Receiving & Verification',ae:['AE-04','AE-12','AE-15'],qg:['QG-01'],
-   input:'Supplier shipment: physical material, packing slip, mill certification PDF, purchase order reference.',
-   output:'Verified MaterialLot stored in carousel; MaterialLot record with lot ID, heat number, cert image, full-profile dimensional scan data, and storage location.',
-   subprocs:[
-     {id:'A.1',name:'Shipment Receipt & PO Matching',cls:'reduced',badge:'HITL-REDUCED',badgeCls:'sp-badge-red',desc:'Handler places bar on receiving conveyor; station scanner retrieves PO; handler confirms gross shipment match. No detailed measurements — automated subsystems handle that.'},
-     {id:'A.2',name:'Automated Physical Inspection',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-15',desc:'Laser micrometer captures cross-section profile at 10+ locations along full bar length (vs 2-point manual caliper). Dimensional conformance report generated. Handler performs visual damage inspection.'},
-     {id:'A.3',name:'OCR Mill Cert Validation',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-04',desc:'OCR pipeline extracts alloy, temper, heat number, and chemical composition from cert PDF. Algorithmic comparison to PO spec. Human review triggered only for < 95% confidence or flagged mismatches.'},
-     {id:'A.4',name:'Labeling & Robotic Storage',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-12',desc:'Print-and-apply system affixes barcode label automatically. Gantry robot loads labeled bar into vertical storage carousel. Position sensors confirm placement. No manual handling between label and storage.'},
+  {id:'0',name:'Material Receiving and Verification',m:'moved',
+   role:'Background-fed, not per-order. Raw stock is verified and stored ahead of demand.',
+   subs:[
+     {id:'0.1',t:'Raw bar received against supplier PO and visually inspected',m:''},
+     {id:'0.2',t:'Laser micrometer cross-section scan',m:''},
+     {id:'0.3',t:'Straightness and full-length check',m:'new'},
+     {id:'0.4',t:'OCR mill cert validation',m:''},
+     {id:'0.5',t:'Quarantine branch for failed stock',m:'new'},
+     {id:'0.6',t:'Robotic carousel storage with lot barcode',m:''},
    ]},
-  {id:'B',name:'Order Intake & Manufacturing Planning',ae:[],qg:[],
-   input:'Customer STEP file, PDF drawing with GD&T, order quantity, due date, customer account.',
-   output:'Confirmed order; user-verified attributes; approved process plan; validated NC programs stored; Job record created (status: Queued).',
-   subprocs:[
-     {id:'B.1',name:'Geometry Parsing & Attribute Inference',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Geometry service parses STEP file and extracts all features. Inferred attributes captured per feature: dimensions, radii, hole depths, thread gauges, surface-finish callouts, GD&T datums.'},
-     {id:'B.2',name:'User-Driven Attribute Confirmation',cls:'hitl',badge:'HITL',badgeCls:'sp-badge-hitl',desc:'Customer portal presents each inferred attribute as a clickable item showing the system\'s inferred value. Customer accepts each, edits where the inference is wrong, or — for attributes that could not be auto-inferred — selects from suggested options. Confirmed attribute set is signed off before DFM analysis runs.'},
-     {id:'B.3',name:'DFM Analysis',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'DFM analyzer scores each feature against confirmed attribute set: tool minimums, tolerance risk, surface reachability, deep-cavity access, thin-wall flags. All-clear (GREEN/YELLOW): customer proceeds directly to quoting. Any issues: alert raised and queued to the customer for B.4.'},
-     {id:'B.4',name:'DFM Issue Acknowledgment (Conditional)',cls:'hitl',badge:'HITL',badgeCls:'sp-badge-hitl',desc:'Triggered only when DFM analysis flags issues. Customer reviews each flagged issue in the portal and chooses (a) ACKNOWLEDGE — accept that the finished part may not meet submitted specs; deviation explicitly noted in the order record; proceed to quoting; or (b) REVISE — request return of STEP file for design revision; on re-upload, Phase B restarts.'},
-     {id:'B.5',name:'Custom Quote Configuration',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Quote engine identifies special requirements from drawing annotations: surface finish spec, tolerance tiers, material certs required, finishing type. Configuration applied to pricing and lead time calculation.'},
-     {id:'B.6',name:'Process Plan Generation',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Setup sequence (Setup 1 + Setup 2), datum references, operation order, tool assignments from tool library, workholding strategy (Setup 1 — hydraulic grip-zone stamping unit + form-clamp 5-Axis Vise on stamped grip zones; Setup 2 — custom 3D-printed PA-CF conformal jaws on Setup-1-machined surfaces), estimated cycle time. Cycle time > 2 hours triggers mandatory human review before approval.'},
-     {id:'B.7',name:'CAM Toolpath Generation & Simulation',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Feeds/speeds from material/tool matrix with first-time-part safety factors. Adaptive clearing (rough), spring pass (critical grooves), peck drilling, synchronous tapping. Full collision simulation against machining center kinematic model. CNC control post-processes to NC code.'},
-     {id:'B.8',name:'Quote Generation & Order Confirmation',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Material + machine + inspection + finishing + overhead → unit price, total, shipping, lead time shown in portal. On customer acceptance: payment authorized, Order and Job records created, confirmation email sent.'},
+  {id:'1',name:'Order Intake and Feasibility',m:'',
+   role:'Pre-quote. Establishes that the part can be made, scheduled, and priced before any commitment.',
+   subs:[
+     {id:'1.1',t:'Customer uploads STEP file and PDF drawing',m:''},
+     {id:'1.2',t:'File revision capture and version control',m:'new'},
+     {id:'1.3',t:'Export-control screening (ITAR and EAR) before quoting',m:'new'},
+     {id:'1.4',t:'Geometry parsing and attribute inference',m:''},
+     {id:'1.5',t:'STEP versus PDF mismatch reconciliation',m:'new'},
+     {id:'1.6',t:'DFM analysis (autonomy-friendliness scoring)',m:''},
+     {id:'1.7',t:'Customer confirms attributes and reviews DFM',m:''},
+     {id:'1.8',t:'DFM reject branch to manual-review queue or auto-decline',m:'new'},
+     {id:'1.9',t:'Material availability check against BG-01 inventory',m:'new'},
+     {id:'1.10',t:'Capacity and schedule feasibility check before promising 48 hours',m:'new'},
+     {id:'1.11',t:'Rough process plan and setup count for costing only',m:'split'},
+     {id:'1.12',t:'Quote generation',m:''},
+     {id:'1.13',t:'Customer onboarding, credit and payment terms',m:'new'},
+     {id:'1.14',t:'Customer PO acceptance',m:'gate'},
    ]},
-  {id:'C',name:'Scheduling, Kitting & Stock Preparation',ae:['AE-02','AE-03'],qg:['QG-02','QG-03'],
-   input:'Confirmed job record (status: Queued); approved process plan; NC programs; material lot in carousel.',
-   output:'Stamped, serialized billets at machine cell input buffer; Setup-2 PA-CF conformal jaw pair printed, pin-pressed, optically verified, mounted to Pallet B; Pallet A (permanent 5-axis form-clamp vise on ZPC) staged in carousel; gripper inserts at robot tool-changer; job status: Scheduled.',
-   subprocs:[
-     {id:'C.1',name:'Job Scheduling & Machine Assignment',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Priority score: urgency × customer tier. Filter machines by axis count, envelope, tool capacity. Optimize assignment for setup affinity (minimize tool changes between consecutive jobs). Kit request triggered 2 hr before scheduled start.'},
-     {id:'C.2',name:'Track 1 (Parallel) — Setup-2 PA-CF Jaw Pipeline',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',desc:'Concurrent with Track 2. Jaw Generation Service runs Setup-2 geometry analysis on the Setup-1-completed-part envelope → Boolean-subtract part with 0.10 mm interference for conformal pocket → Voronoi pin-socket placement (4–8 sockets, never on CTF surfaces) → slice → print on 2× FFF cell with PA-CF + 4 hr in-chamber anneal at 120°C (6–10 hr total). Print-cell robot picks from build plate → pin-press station seats Ø6×12 mm hardened steel grip pins at 2 kN (~30 s/pin) → optical measurement system optical verification → robot mounts jaws on Pallet B via mini-zero-point receivers at ≤ 0.005 mm repeatability. (Setup 1 uses permanent 5-axis form-clamp vise — no per-job jaw generation.) [QG-03]'},
-     {id:'C.3',name:'Track 2 (Parallel) — Material Kitting + Op1 Prep',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-02,AE-03',desc:'Concurrent with Track 1. AMR autonomously retrieves bar from vertical storage carousel carousel (FIFO lot selection); on-board scanner reads lot barcode at receiving sensor; AMR navigates to bandsaw and loads bar into bar-feeder via integrated AMR-to-feeder transfer station — fully autonomous, zero manual touch. Servo bandsaw cuts all billets per kit spec. Inline: dot-peen serial (JobID-SeqNum) + print-and-apply barcode + read-back verification. hydraulic grip-zone stamping unit creates serrated grip zones on each billet (force-monitored ~150 kN cycle; logged per serial to digital thread). AMR delivers stamped, serialized billets to cell input buffer. [QG-02]'},
+  {id:'2',name:'Job Engineering and Program Generation',m:'new',
+   role:'Post-PO. Full CAM moved here from intake. The detailed manufacturing program is built only after the order is committed.',
+   subs:[
+     {id:'2.1',t:'Finalize setup sequence (Setup 1, Setup 2) and datum assignment',m:''},
+     {id:'2.2',t:'Generate grip-zone stamp locations for Setup 1',m:'new'},
+     {id:'2.3',t:'Generate conformal jaw geometry and pin-socket placement (moved upstream of print)',m:'new'},
+     {id:'2.4',t:'Generate Setup-1-unload and Setup-2-load gripper insert geometry',m:'new'},
+     {id:'2.5',t:'CAM toolpath generation and post (moved out of intake)',m:'moved'},
+     {id:'2.6',t:'Machine and collision simulation, verified',m:'split'},
+     {id:'2.7',t:'Inspection-plan generation from drawing GD and T (replaces fixed 47-point program)',m:'new'},
+     {id:'2.8',t:'OSP routing determination (passivation, anodize, coating, heat treat)',m:'new'},
+     {id:'2.9',t:'Finalize tool list and reserve against BG-03 crib',m:'new'},
+     {id:'2.10',t:'First-article versus repeat determination',m:'new'},
+     {id:'2.11',t:'Program release: new geometry requires dry run and single-block proveout before unattended repeat is authorized',m:'gate'},
    ]},
-  {id:'D',name:'Machining Operations',ae:['AE-07'],qg:['QG-04','QG-06','QG-09'],
-   input:'Stamped, serialized billets in cell input buffer; Pallet A (Setup 1: permanent 5-axis form-clamp vise on ZPC) and Pallet B (Setup 2: PA-CF jaw pair on mini-ZPC) staged in carousel; gripper inserts at robot tool-changer; NC programs loaded; dispatch signal.',
-   output:'Machined parts in CMM staging; per-part data logged: cycle times, spindle loads, probe measurements, tool usage, RUL history.',
-   subprocs:[
-     {id:'D.1',name:'Pallet Mount & Robot Part Loading — Setup 1',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'part-handling robot picks Pallet A (5-axis form-clamp vise) from carousel; loads to machining center trunnion table; four zero-point clamping (ZPC) modules engage pull-studs at ~7,500 N axial each (~30 kN combined, ≤ 0.005 mm repeatability). Spindle reads pallet Data Matrix code; loads pallet G54 base offset. Robot picks stamped billet from kit tray; machine vision verifies barcode + Setup-1 datum orientation + grip-zone serrations on designated clamp faces; lowers billet into form-clamp vise jaws which engage the stamped serrations (form-locking grip — no surface deformation of bulk billet). Hydraulic clamp body advances at job-spec pressure (typically 25–35 kN holding force per form-clamp datasheet); clamp travel monitored at 100 Hz. "Pallet Ready" signal to machine on travel within ±0.5 mm of expected stop.'},
-     {id:'D.2',name:'Datum Establishment (Probing)',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'in-machine touch probe probe: 3-point Z (top face), 2-point X, 2-point Y. Offsets stored to G54. Stock dimensions checked against ±0.030" nominal; billet rejected if outside range.'},
-     {id:'D.3',name:'Roughing with Predictive Tool Wear Monitoring',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-07',desc:'Adaptive clearing; continuous 10 Hz spindle load monitoring (CL-3 adaptive feed control). Predictive model ingests load integral, cut time, volume removed, vibration spectrum; updates RUL per tool. Preemptive tool change scheduled if RUL < 1 part-equivalent at next inter-part pause.'},
-     {id:'D.4',name:'In-Process Probing & Compensation',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Post-rough probe measures critical feature dimensions. Deviation → compensating offset written to finish tool register. Corrects for tool deflection, material variation, thermal drift between rough and finish passes. (CL-1)'},
-     {id:'D.5',name:'Finish Machining with Predictive Management',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-07',desc:'Finish pocket, gasket groove + spring pass, groove probe at 4 locations, drill/tap M3 holes (synchronous tapping), chamfer all edges. 1/16" groove end mill: tighter threshold of 1.5 part-equivalents for preemptive replacement.'},
-     {id:'D.6',name:'Pallet Swap & Setup 2 Transfer',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'hydraulic form-clamp vise depressurizes. Robot enters with Setup-1-unload PA-CF gripper insert (cradles part on Setup-1 finished outer geometry, preserves machined surfaces). Pallet swap: ejects Pallet A from ZPC, loads Pallet B (PA-CF Setup-2 jaws pre-mounted), modules re-engage at ≤ 0.005 mm. Robot places part on transfer cradle, tool-changes to Setup-2-load gripper, re-picks part flipped. Lowers part into PA-CF conformal pocket — pins land only on designated faces (algorithm-enforced; stamped grip zones may fall here as machinable remnant removed in Op2). Spindle re-probes datum on flipped part; G54 frame shifts to measured position (closes ±0.113 mm naive RSS to ±0.010 mm achieved feature-to-feature). Setup 2 program: face bottom, contour perimeter, chamfer remaining edges.'},
-     {id:'D.7',name:'Part Unload & WIP Transfer',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Robot unloads to output buffer; barcode confirms identity. Cycle repeats for each billet. AMR transports accumulated parts batch to CMM staging when buffer reaches capacity.'},
+  {id:'3',name:'Scheduling and Dispatch',m:'new',
+   role:'Touchpoint into Continuous Layer CL-01. The job enters the live resource arbitration loop.',
+   subs:[
+     {id:'3.1',t:'Job enters queue; priority scored',m:''},
+     {id:'3.2',t:'Reserve machine, robots, CMM, printers',m:''},
+     {id:'3.3',t:'Allocate material to a specific heat lot (FIFO)',m:'new'},
+     {id:'3.4',t:'Dispatch trigger',m:''},
    ]},
-  {id:'E',name:'Inspection',ae:['AE-01','AE-05','AE-14'],qg:['QG-10','QG-12','QG-13'],
-   input:'Machined parts staged at CMM area; inspection programs loaded.',
-   output:'Inspection-passed parts with digital pass stamp per serial; all 47+ measurements in digital thread; NCRs created for failures.',
-   subprocs:[
-     {id:'E.1',name:'Machine Vision Cosmetic Inspection',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-05',desc:'Multi-angle camera array at 500 lux equivalent; AI defect detection classifies surface anomalies (scratches, tool marks, pits, inclusion voids) with size and location. Definitive fails = NCR. Borderline = human review. [QG-10]'},
-     {id:'E.2',name:'Automated Thread Gauging',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-14',desc:'Motorized GO/NO-GO gauging station tests 100% of threaded holes with torque-monitored insertion. Pass/fail per hole logged to digital thread. Any NO-GO fail = NCR. [QG-11]'},
-     {id:'E.3',name:'CMM Dimensional Inspection',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-01',desc:'inspection-loading robot robot loads/unloads parts onto the CMM (replaces manual technician). 47-point program: groove width + depth (8 locations), M3 hole positions, mating surface flatness (12 points), envelope dimensions. Digital pass stamp on all-pass. [QG-12]'},
-     {id:'E.4',name:'SPC Analysis',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'X-bar control chart on critical dimensions (e.g., groove width). ±3σ control limits. Violation: stop and investigate. 7-point trend: preemptive offset adjustment before parts drift OOT. (CL-4)'},
+  {id:'4',name:'Workholding, Stock and Tooling Preparation',m:'',
+   role:'Three parallel tracks. Fixtures, stock, and tools are prepared concurrently before machining.',
+   subs:[
+     {id:'4.T1',t:'Track 1: Fixture Generation (Setup 2)',m:'track'},
+     {id:'4.1',t:'3D print PA-CF conformal jaws and gripper inserts',m:''},
+     {id:'4.2',t:'In-chamber anneal',m:''},
+     {id:'4.3',t:'Pin-press hardened steel grip pins',m:''},
+     {id:'4.4',t:'Optical verification of jaws',m:'new'},
+     {id:'4.5',t:'Mount to Pallet B via mini zero-point',m:''},
+     {id:'4.T2',t:'Track 2: Material Kitting (Setup 1)',m:'track'},
+     {id:'4.6',t:'AMR retrieves bar stock from carousel (FIFO lot)',m:''},
+     {id:'4.7',t:'Servo bandsaw cuts billets',m:''},
+     {id:'4.8',t:'Remnant and offcut return to carousel',m:'new'},
+     {id:'4.9',t:'Inline serialization (dot-peen), barcode and read-back verify',m:''},
+     {id:'4.10',t:'Hydraulic grip-zone stamping, force-monitored (150 kN)',m:''},
+     {id:'4.11',t:'Deliver stamped, serialized billets to cell input buffer',m:''},
+     {id:'4.T3',t:'Track 3: Tooling Staging',m:'track'},
+     {id:'4.12',t:'Pull tools per job tool list from BG-03 crib',m:'new'},
+     {id:'4.13',t:'Offline presetting (length and diameter)',m:'new'},
+     {id:'4.14',t:'Load magazine and verify against tool list',m:'new'},
+     {id:'4.15',t:'Magazine-capacity reconciliation (open item RN-1)',m:'flag'},
    ]},
-  {id:'F',name:'Deburring & Cleaning',ae:['AE-11','AE-13'],qg:['QG-15','QG-16'],
-   input:'Inspection-passed machined parts.',
-   output:'Deburred, cleaned, surface-verified parts staged for finishing; cleanliness confirmed via automated water break test.',
-   subprocs:[
-     {id:'F.1',name:'Robotic Vibratory Deburring',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-11',desc:'collaborative finishing robot robot loads/unloads tumbler basket (replaces manual handling). 18-min cycle, ceramic media, 1,800 VPM, 3 mm amplitude. Post-tumble: 90 PSI air blast per part; vision system checks features for lodged media. [QG-15]'},
-     {id:'F.2',name:'Robotic Aqueous Washing',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-11',desc:'Robot transfers to mesh basket. 4-stage cycle: alkaline wash 140°F / rinse / DI rinse / hot air dry 180°F. Fully automated; no manual part handling.'},
-     {id:'F.3',name:'Automated Water Break Test',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-13',desc:'Controlled spray applies thin water film; camera captures water behavior under consistent lighting. Algorithm: uniform sheeting = clean (pass); any beading = contamination (return to washer). Re-wash attempt; if second failure, escalate to technician. [QG-16]'},
+  {id:'5',name:'Machining Operations',m:'',
+   role:'The two-setup cut. Probing closes the feature-to-feature reference between setups.',
+   subs:[
+     {id:'5.1',t:'Spindle warmup and thermal stabilization if cold',m:'new'},
+     {id:'5.2',t:'Robot loads Pallet A; ZPC modules engage',m:''},
+     {id:'5.3',t:'Load stamped billet; vision verify orientation and grip zones; clamp confirm',m:'split'},
+     {id:'5.4',t:'Probe datum (Setup 1) and validate stock in range',m:''},
+     {id:'5.5',t:'Tool verification at changes: laser tool-setter and broken-tool detection',m:'new'},
+     {id:'5.6',t:'Roughing with adaptive feed and RUL tool-wear monitoring',m:''},
+     {id:'5.7',t:'In-process probe and bounded compensation; halt if compensation exceeds threshold rather than masking a fault',m:'new'},
+     {id:'5.8',t:'Finish machining',m:''},
+     {id:'5.9',t:'Final probe to verify Setup 1 completion',m:''},
+     {id:'5.10',t:'Continuous coolant and chip monitoring across the cut (concentration, level, temperature; chip conveyor and bin-full detection; alloy-segregated swarf)',m:'new'},
+     {id:'5.11',t:'Pallet swap A to B; robot regrip and flip via transfer cradle',m:'split'},
+     {id:'5.12',t:'Re-datum probe on machined surfaces for Setup 2 (closes RSS stackup to feature-to-feature reference)',m:'new'},
+     {id:'5.13',t:'Setup 2 machining (remaining geometry)',m:''},
+     {id:'5.14',t:'Robot unloads to output buffer; barcode confirm',m:''},
+     {id:'5.15',t:'AMR transfers batch to inspection staging',m:''},
    ]},
-  {id:'G',name:'Surface Finishing',ae:[],qg:['QG-17'],
-   input:'Cleaned parts staged for finishing.',
-   output:'Bead-blasted parts with verified Ra 100–150 matte finish; per-serial profilometer data linked to digital thread. (No anodizing, painting, or powder coating in crawl phase — bead-blast is the as-shipped finish.)',
-   subprocs:[
-     {id:'G.1',name:'Internal Transfer to Bead-Blast Cell',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'AMR transports clean parts tray from deburr/clean station to autonomous bead-blast cell. Digital traveler updated with job ID, serials, and finish specification.'},
-     {id:'G.2',name:'Robotic Masking & Bead Blasting',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',desc:'6-axis robot picks pre-formed silicone plugs from inline magazine and seats one into each threaded hole per the masking program (hole locations from job record); vision system verifies every plug is fully seated. Robot then manipulates each part through the blast envelope with programmatically held nozzle-to-surface distance and angle (120-grit aluminum oxide, 40–60 PSI, 30–60 s per part). Spent media reclaimed via inline cyclone separator. Fully autonomous — no technician handling.'},
-     {id:'G.3',name:'Robotic Profilometer & Plug Removal',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',desc:'Robot positions each part under non-contact optical profilometer at multiple predefined locations; Ra captured per location and recorded to digital thread linked to part serial. Vision-guided robotic plug removal extracts every silicone plug; vision verifies threads undamaged and all plugs accounted for. Fully autonomous. [QG-17]'},
+  {id:'6',name:'In-Process Inspection',m:'moved',
+   role:'Process control, not final acceptance. Feeds the deburr step; scope changed from the old pre-finish CMM role.',
+   subs:[
+     {id:'6.1',t:'AI machine-vision cosmetic and burr detection (feeds deburr)',m:'moved'},
+     {id:'6.2',t:'Machined surface-finish check',m:'new'},
    ]},
-  {id:'H',name:'Final Release & Shipping',ae:['AE-06','AE-09'],qg:['QG-20'],
-   input:'Finished, inspected parts; complete digital thread; all quality gates green.',
-   output:'Parts delivered to customer; Certificate of Conformance issued; payment captured; job status: Complete.',
-   subprocs:[
-     {id:'H.1',name:'Automated Quality Release',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-06',desc:'System audits all QGs: exception-free standard jobs (no open NCRs, no PPAP/AS9100/ITAR) → auto-released. System generates CoC, inspection report, traceability package, digital signature. Jobs with exceptions or regulatory requirements → human quality engineer sign-off. [QG-20]'},
-     {id:'H.2',name:'Automated Packaging Line',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-09',desc:'Each part bagged in static-dissipative poly bag; serialized label printed and applied; placed in foam-lined box; box sealed; packing slip inserted listing all serial numbers.'},
-     {id:'H.3',name:'Shipping & Digital Thread Archival',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Shipping label generated via carrier API; tracking number to customer portal; customer notified. Complete digital thread archived: CAD, process plan, all measurements, material lot, machine serial, stamp parameters, tool usage, profilometer Ra data, inspection results — all linked to order.'},
+  {id:'7',name:'Deburring and Cleaning',m:'',
+   role:'Targeted and bulk deburr, wash, and cleanliness verification.',
+   subs:[
+     {id:'7.1',t:'Targeted robotic deburr of cross-holes and internal features (tumbler cannot reach intersecting bores)',m:'new'},
+     {id:'7.2',t:'Robotic vibratory deburring with thread and precision-surface protection',m:'split'},
+     {id:'7.3',t:'Media-and-part separation after tumbling',m:'new'},
+     {id:'7.4',t:'Robotic aqueous washing (4-stage cycle)',m:''},
+     {id:'7.5',t:'Automated camera-based water-break test',m:''},
+     {id:'7.6',t:'Wash-fluid maintenance and disposal',m:'new'},
    ]},
-  {id:'I',name:'Archival & Continuous Improvement',ae:['AE-08'],qg:[],
-   input:'Complete job data: actual cycle times, spindle load profiles, NCR records, cost actuals vs quoted.',
-   output:'Updated estimation models, feeds/speeds matrix, tool wear model, DFM rules, and cost coefficients — auto-applied within guard rails.',
-   subprocs:[
-     {id:'I.1',name:'Digital Thread Archival',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'All job data permanently archived: operational data, measurements, timestamps, actor IDs — linked to order record for complete traceability.'},
-     {id:'I.2',name:'Self-Tuning Estimation Models',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-08',desc:'Cycle time variance, feeds/speeds, cost model feedback — all automatically adjusted within guard rails (≤ 5% safety factor, ≤ 10% operation times, ≤ 10% feeds/speeds per job). Exceeding guard rails queues for human approval.'},
-     {id:'I.3',name:'Tool Wear Model Feedback',cls:'enh',badge:'AUTO-ENHANCED',badgeCls:'sp-badge-enh',ae:'AE-08',desc:'Logs retired tool actual life vs predicted RUL, retirement reason, final condition. Retrains ML prediction model on expanded dataset. Deploys updated model only if cross-validated accuracy improves. (AE-07 integration)'},
-     {id:'I.4',name:'Quality & DFM Rule Analysis',cls:'auto',badge:'AUTO',badgeCls:'sp-badge-auto',desc:'Categorize NCRs by root cause; Pareto analysis; identify systematic issues across jobs. New failure modes or high-false-positive DFM rules queued for human review before applying changes to rule database.'},
+  {id:'8',name:'In-Cell Surface Finishing',m:'flag',
+   role:'Scope-gated. Bead blast is in this tree but removed from the phasing table elsewhere; confirm crawl-phase scope before keeping.',
+   subs:[
+     {id:'8.0',t:'Scope decision required: confirm bead blast is in crawl-phase scope (conflicts with phasing table)',m:'flag'},
+     {id:'8.1',t:'Robot applies masking',m:''},
+     {id:'8.2',t:'Automated bead blasting',m:''},
+     {id:'8.3',t:'Profilometer surface check',m:''},
+     {id:'8.4',t:'Robot removes masking',m:''},
+   ]},
+  {id:'9',name:'Outside Processing',m:'new',
+   role:'Conditional, per the Stage 2 OSP routing. Bead blast is not corrosion protection or passivation.',
+   subs:[
+     {id:'9.1',t:'303 stainless passivation (ASTM A967); 6061 or 7075 anodize or chromate; 4140 black oxide, oil or coating to prevent flash rust',m:''},
+     {id:'9.2',t:'Package for vendor and raise OSP PO',m:''},
+     {id:'9.3',t:'Ship out to vendor (carrier pickup is not in-cell)',m:'handoff'},
+     {id:'9.4',t:'Vendor performs passivation, anodize, coating or heat treat',m:''},
+     {id:'9.5',t:'Receive parts back; incoming inspection of returned parts',m:'new'},
+     {id:'9.6',t:'Capture OSP cert into the digital thread (Layer CL-02)',m:''},
+   ]},
+  {id:'10',name:'Final Inspection and Acceptance',m:'moved',
+   role:'On the finished part, after all material-altering operations. Moved here from the old pre-finish position.',
+   subs:[
+     {id:'10.1',t:'Robot-loaded CMM dimensional check, after all material-altering ops',m:''},
+     {id:'10.2',t:'Automated thread verification (GO and NO-GO or equivalent automated method)',m:''},
+     {id:'10.3',t:'SPC trending for validated repeat parts',m:'new'},
+     {id:'10.4',t:'First-article inspection report (FAIR) for new geometry',m:'new'},
+     {id:'10.5',t:'Final cosmetic gate',m:'gate'},
+   ]},
+  {id:'11',name:'Nonconformance Handling',m:'new',
+   role:'Branch reachable from any inspection gate. Feeds corrective action back to the knowledge repository.',
+   subs:[
+     {id:'11.1',t:'NCR generation',m:'new'},
+     {id:'11.2',t:'Quarantine of nonconforming part and, if implicated, the material lot',m:'new'},
+     {id:'11.3',t:'Rework versus scrap decision',m:'new'},
+     {id:'11.4',t:'Rework re-entry point into the correct upstream stage',m:'new'},
+     {id:'11.5',t:'Root-cause and corrective action fed to the knowledge repository',m:'new'},
+   ]},
+  {id:'12',name:'Final Release, Packaging and Shipping',m:'',
+   role:'Quality release, certification, packaging, dispatch, and digital-thread closure.',
+   subs:[
+     {id:'12.1',t:'Automated quality release',m:''},
+     {id:'12.2',t:'CoC generation bundling material cert, OSP certs and inspection report',m:'split'},
+     {id:'12.3',t:'FAIR packet attached for new parts',m:'new'},
+     {id:'12.4',t:'Corrosion protection and VCI packaging, required for 4140 steel',m:'new'},
+     {id:'12.5',t:'Order consolidation and kitting for multi-part orders',m:'new'},
+     {id:'12.6',t:'Automated packaging (bag, label, box, seal)',m:''},
+     {id:'12.7',t:'Shipping label generated and carrier handoff',m:''},
+     {id:'12.8',t:'Customer ship notification with tracking',m:'new'},
+     {id:'12.9',t:'Invoicing or billing trigger on shipment',m:'new'},
+     {id:'12.10',t:'Complete digital thread closed and permanently archived',m:''},
+   ]},
+  {id:'13',name:'Post-Delivery',m:'new',
+   role:'The closed learning loop. Field outcomes and actuals feed back into the models.',
+   subs:[
+     {id:'13.1',t:'RMA, returns and warranty path',m:'new'},
+     {id:'13.2',t:'Actuals versus estimates feedback into process models, tool-life predictions and scheduling logic',m:'new'},
    ]},
 ];
+
+const CONTINUOUS_LAYERS = [
+  {id:'CL-01',name:'Orchestration and Scheduling',m:'new',
+   subs:[
+     'Continuous resource arbitration (one CNC, shared robots, one CMM, printers)',
+     'Job queue priority scoring (due date, rush status, setup affinity)',
+     'Resource reservation and contention resolution',
+     'Rescheduling on disruption (tool wait, exception, maintenance window)',
+     'WIP buffer management between stations',
+   ]},
+  {id:'CL-02',name:'Digital Thread Accretion',m:'new',
+   subs:[
+     'Data captured at every step, not archived only at the end',
+     'Material heat-lot genealogy carried to finished part',
+     'Tool IDs used per feature, probe data, in-process measurements',
+     'Inspection data, SPC records, OSP certs',
+     'Every exception and operator-touch event logged',
+   ]},
+  {id:'CL-03',name:'Exception Handling and Human-in-the-Loop Escalation',m:'new',
+   subs:[
+     'Every gate has a defined fail branch (not pass-only)',
+     'Escalation path to cell technician on any halt',
+     'Severity tiers (auto-retry, hold-for-review, full stop)',
+     'Reconciles the public no-human-in-the-production-path claim with the internal reality of human-on-exception',
+   ]},
+  {id:'CL-04',name:'Safety and Cell Access Control',m:'new',
+   subs:[
+     'Light curtains and zone interlocks',
+     'Robot speed reduction on human presence',
+     'Lockout and tagout on cell entry',
+     'Safe-state on any CL-03 full stop',
+   ]},
+];
+
+const BACKGROUND_PROCESSES = [
+  {id:'BG-01',name:'Procurement, Inventory and MRP',m:'new',
+   subs:[
+     'Raw bar stock reorder points and supplier POs (min and max by alloy and size)',
+     'Receiving against supplier PO (matches Stage 0)',
+     'Consumable reorder: inserts, PA-CF filament, masking, packaging, coolant, blast media, VCI',
+     'Stock-out and depletion alerts feed CL-03 escalation',
+   ]},
+  {id:'BG-02',name:'Maintenance, Calibration and Cell Health',m:'new',
+   subs:[
+     'Preventive maintenance scheduling (spindle, way lube, robots, AMR, CMM)',
+     'Probe and laser tool-setter calibration cycle',
+     'CMM artifact and gauge verification (gauge R and R)',
+     'Spindle warmup and thermal stabilization routines',
+     'Predictive maintenance off the MTConnect and OPC UA stream',
+   ]},
+  {id:'BG-03',name:'Tooling Crib Management',m:'new',
+   subs:[
+     'Tool and insert inventory and replenishment',
+     'Offline presetting station (length and diameter measurement)',
+     'Tool life history per tool body',
+     'Feeds per-job tool staging in Stage 4, Track 3',
+   ]},
+];
+
 const AE_DATA=[
   {id:'AE-01',name:'Robot-Loaded CMM Cell',phase:'E',change:'Dedicated inspection-loading robot replaces technician for CMM loading and unloading'},
   {id:'AE-02',name:'Automated Bandsaw with Bar Feeder',phase:'C',change:'Servo-controlled servo-controlled bandsaw with programmable stop replaces manual cutting'},
@@ -100,6 +243,7 @@ const AE_DATA=[
   {id:'AE-14',name:'Automated Thread Gauging',phase:'E',change:'Motorized GO/NO-GO gauging station tests 100% of threaded holes'},
   {id:'AE-15',name:'Automated Dimensional Scanning at Receiving',phase:'A',change:'Laser micrometer continuous profile (10+ locations) replaces 2-point manual caliper check'},
 ];
+
 const CL_DATA=[
   {num:'1',name:'Tool Wear Compensation',cls:'',badge:'AUTO',badgeCls:'cl-b-auto',sensor:'In-machine touch probe (in-machine touch probe)',variable:'Tool length offset (Z)',point:'After roughing, before finishing',mechanism:'Probe measures feature dimension; compares to nominal; deviation → compensating offset written to finish tool register. Applied per-part.'},
   {num:'2',name:'Thermal Drift Compensation',cls:'',badge:'AUTO',badgeCls:'cl-b-auto',sensor:'Axis encoders (linear scales), ambient temperature sensor',variable:'Work offset (G54)',point:'Datum establishment at each cycle start',mechanism:'Per-part probing corrects for thermal growth. Historical drift rate exceeding 0.0005" / hour triggers machine inspection.'},
@@ -108,22 +252,24 @@ const CL_DATA=[
   {num:'5',name:'Predictive Tool Wear Management',cls:'enhanced',badge:'AUTO-ENHANCED',badgeCls:'cl-b-enh',sensor:'Spindle load integral, cut time per tool, material volume removed, vibration spectrum',variable:'Tool replacement timing',point:'Continuous during cutting; evaluated at each inter-part pause',mechanism:'ML model predicts Remaining Useful Life (RUL) per tool. RUL < 1 part-equivalent → schedule preemptive change at next inter-part pause. 1/16" groove mill threshold: 1.5 part-equivalents. Retired tool data feeds model retraining (AE-08).'},
   {num:'6',name:'Self-Tuning Estimation',cls:'enhanced',badge:'AUTO-ENHANCED',badgeCls:'cl-b-enh',sensor:'Post-job actual data: cycle times, spindle loads, quality outcomes, costs',variable:'Estimation model parameters (safety factors, op-time coefficients, feeds/speeds, cost coefficients)',point:'After each job completion',mechanism:'Automated variance analysis calculates adjustments. Within guard rails → auto-applied. Exceeding guard rails → queued for human approval. Prevents estimation drift across job history.'},
 ];
+
 const HITL_DATA=[
   {activity:'Placing bar on receiving conveyor + visual damage inspection',reason:'Physical dock handling; subjective damage assessment judgment'},
   {activity:'OCR cert exception review (flagged mismatches, < 95% confidence)',reason:'Judgment on ambiguous or non-standard cert data'},
   {activity:'User attribute confirmation at order intake',reason:'Customer-driven sign-off on inferred dimensions, radii, hole depths, thread gauges; required selection for any attribute the geometry parser could not auto-infer'},
-  {activity:'DFM issue acknowledgment',reason:'Customer choice on flagged DFM issues — either acknowledge that finished part may not meet submitted specs and proceed, or revise the STEP file and re-upload'},
+  {activity:'DFM issue acknowledgment',reason:'Customer choice on flagged DFM issues. Either acknowledge that finished part may not meet submitted specs and proceed, or revise the STEP file and re-upload'},
   {activity:'Process plan approval for RED-flagged parts',reason:'Engineering judgment for complex edge cases beyond parameter bounds'},
   {activity:'Edge-case workholding review (HITL fallback)',reason:'< 5% of HMLV demand: very thin parts, no parallel grip faces, sub-10 mm parts; geometries that defy the autonomous Jaw Generation Service. Reverts to legacy CNC-cut 6061 soft jaw process under engineering review.'},
   {activity:'NCR disposition',reason:'Customer impact decisions; rework feasibility judgment'},
   {activity:'Root cause analysis (complex failures)',reason:'Investigation requiring deep domain expertise'},
-  {activity:'Machine vision exception review (borderline cosmetic flags)',reason:'Borderline defect judgment — accept vs NCR call'},
+  {activity:'Machine vision exception review (borderline cosmetic flags)',reason:'Borderline defect judgment, accept versus NCR call'},
   {activity:'Quality release for exception and regulatory jobs',reason:'Accountability; regulatory requirement (AS9100, ITAR, PPAP)'},
   {activity:'Exception handling at any automated station',reason:'Jam clearing, fault recovery, physical intervention'},
   {activity:'Periodic maintenance (media, solutions, blades, gauges)',reason:'Physical service tasks requiring technician access'},
   {activity:'DFM rule changes (new rules, threshold modifications)',reason:'Engineering validation required before committing to production rule database'},
   {activity:'Estimation model changes exceeding guard rails',reason:'Human approval required for parameter shifts > defined thresholds'},
 ];
+
 const SAFETY_DATA=[
   {interlock:'Machine door open',trigger:'Limit switch activated',action:'Spindle stops immediately; axes hold position'},
   {interlock:'Robot cell light curtain broken',trigger:'Presence detected in restricted zone',action:'Robot stops; safety-rated monitored stop (cannot resume without reset)'},
@@ -137,6 +283,7 @@ const SAFETY_DATA=[
   {interlock:'Power loss',trigger:'UPS detects mains loss',action:'Graceful shutdown sequence initiated; axes secured'},
   {interlock:'Bead-blast enclosure pressure loss',trigger:'Differential pressure < threshold (containment breach)',action:'Pause blast cycle; vent and isolate; alarm to maintenance'},
 ];
+
 const AUTO_LIST=[
   'File parsing, attribute inference, and DFM analysis','Quote generation','Process plan generation','NC program generation and collision simulation',
   'Job scheduling and dispatch','Autonomous Setup-2 workholding generation (jaw geometry → PA-CF print → pin press → optical verify → mini-ZPC mount on Pallet B)','hydraulic grip-zone stamping unit (autonomous billet grip-zone preparation for Op1)','Robot part loading on form-clamp vise (Op1) and PA-CF jaws (Op2), pallet swap, gripper-insert tool change, Setup 1 → Setup 2 transfer',
@@ -144,7 +291,7 @@ const AUTO_LIST=[
   'Predictive tool wear management (CL-5)','CMM loading, measurement, and pass/fail disposition (AE-01)',
   'Machine vision cosmetic inspection (AE-05)','Automated thread gauging 100% (AE-14)',
   'Robotic deburr tumbler loading/unloading (AE-11)','Automated water break test (AE-13)',
-  'Robotic masking, bead blasting, and profilometer verification (Phase G — fully autonomous, zero HITL)',
+  'Robotic masking, bead blasting, and profilometer verification (Phase G, fully autonomous, zero HITL)',
   'AMR / AGV part transfers including autonomous bar retrieval and bandsaw loading',
   'Quality release for exception-free standard jobs (AE-06)','Automated packaging (AE-09)',
   'Shipping label generation','Status updates and customer portal notifications','Digital thread archival',
@@ -153,6 +300,7 @@ const AUTO_LIST=[
   'Automated dimensional scanning at receiving (AE-15)',
   'Robotic carousel storage (AE-12)','Automated bandsaw cutting with inline serialization (AE-02, AE-03)',
 ];
+
 const PHASE_META = {
   crawl:{name:'Crawl',phase:'Phases 1 to 2',tag:'Cell buildout and validation',
     headline:'Single cell built, validated, and run as partially supervised production.',
@@ -164,14 +312,16 @@ const PHASE_META = {
     headline:'Lights-out, continuous, around-the-clock autonomous facility.',
     desc:'Zero human intervention in the production path, running continuously across an expanded machine fleet. The only manual activities left are the structural ones: physical material receipt and carrier handoff, customer decisions, governance approvals, and scheduled maintenance.'}
 };
+
+// status per phase: 'man' = manual, 'sup' = supervised, 'auto' = autonomous. who = NEXT or Customer.
 const PHASING = [
-  {g:'A. Material Receiving & Verification', rows:[
+  {g:'Stage 0. Material Receiving and Verification', rows:[
     {id:'A.1',name:'Inbound receipt, damage check & storage carousel placement',cat:'Boundary',who:'NEXT',crawl:'man',walk:'man',run:'man',note:'Physical carrier handoff and visual damage check. Only manual material touch in the workflow; structural at every stage.'},
     {id:'A.2',name:'Full-profile dimensional scan',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Laser micrometer profiles 10+ cross-sections (AE-15).'},
     {id:'A.3',name:'OCR mill-cert validation',cat:'Governance',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'OCR extracts cert fields; a human reviews only sub-95% confidence or flagged mismatches. Exception rate drops as the cert corpus grows.',supRsn:'OCR validation runs on its own. A reviewer is looped in only for certs below 95% read confidence or with field mismatches. The review rate falls as the validated cert library grows, and the step is fully autonomous from the walk phase.'},
     {id:'A.4',name:'Robotic carousel storage',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Gantry robot loads the vertical storage carousel (AE-12).'},
   ]},
-  {g:'B. Order Intake & Manufacturing Planning', rows:[
+  {g:'Stages 1 and 2. Order Intake, Feasibility and Job Engineering', rows:[
     {id:'B.1',name:'Geometry parse & attribute inference',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Geometry service extracts every feature from the STEP file.'},
     {id:'B.2',name:'User-driven attribute confirmation',cat:'Customer',who:'Customer',crawl:'man',walk:'man',run:'man',note:'Customer accepts or edits each inferred attribute. Customer-side sign-off with contractual weight.'},
     {id:'B.3',name:'DFM analysis',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'DFM analyzer scores each feature against the confirmed set.'},
@@ -180,13 +330,13 @@ const PHASING = [
     {id:'B.7',name:'CAM toolpath & collision simulation',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Toolpaths from the feeds-and-speeds matrix; full collision sim against the machining-center model.'},
     {id:'B.8',name:'Quote & PO acceptance',cat:'Customer',who:'Customer',crawl:'man',walk:'man',run:'man',note:'Customer accepts the quote and PO. Auto-quote clears below threshold; PO acceptance is always customer authority.'},
   ]},
-  {g:'C. Scheduling, Kitting & Stock Preparation', rows:[
+  {g:'Stages 3 and 4. Scheduling, Workholding, Stock and Tooling Prep', rows:[
     {id:'C.1',name:'Job scheduling & dispatch',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Priority scoring and machine assignment.'},
     {id:'C.2',name:'Conformal jaw generation pipeline',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Jaw print, anneal, pin-press, optical verify, mini zero-point mount.'},
     {id:'C.3',name:'Material kitting & Op1 grip-zone stamping',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Autonomous bar retrieval, bandsaw cut, serialization, 150 kN grip-zone serration stamp.'},
     {id:'C.4',name:'Edge-case workholding fallback',cat:'Governance',who:'NEXT',crawl:'man',walk:'sup',run:'auto',note:'Under 5% of demand: thin walls, sub-10 mm parts, exotic geometry. Engineer specs a legacy fixture in crawl; coverage widens with data until the fallback automates.',supRsn:'Standard geometries are fully automated. Parts that fall outside the conformal-jaw rules (thin walls, very small parts, exotic geometry) are routed to an engineer for a fixture decision. Coverage widens with accumulated data until this fallback is handled automatically by the run phase.'},
   ]},
-  {g:'D. Machining Operations', rows:[
+  {g:'Stage 5. Machining Operations', rows:[
     {id:'D.1',name:'Robotic loading & Setup-1 pallet mount',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Robot loads the form-clamp vise; form-lock on stamped serrations.',supRsn:'Robotic loading and clamping execute autonomously. During crawl, partially supervised production keeps a technician at the cell to confirm correct seating and clear any load fault. Attendance ends once unattended operation is validated in walk.'},
     {id:'D.2',name:'Datum probing & compensation',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'In-machine datum probe; in-process offset correction (CL-1).',supRsn:'Datum probing and offset correction run autonomously. Crawl attendance confirms probe behavior and datum integrity before the cell runs unattended.'},
     {id:'D.3',name:'Roughing with predictive tool-wear',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Adaptive-feed roughing (CL-3) with tool-life monitoring (AE-07).',supRsn:'Roughing with adaptive feed and tool-wear monitoring is autonomous. A technician attends in crawl to observe cutting load and tool changes on early runs.'},
@@ -194,41 +344,37 @@ const PHASING = [
     {id:'D.5',name:'Pallet swap & Setup-2 transfer',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Autonomous Pallet A to B swap, part flip, re-seat in the conformal pocket.',supRsn:'The pallet swap, part flip, and re-seat run autonomously. Crawl attendance backstops the most handling-intensive step until repeatability is proven.'},
     {id:'D.6',name:'Part unload & WIP transfer',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Robot unload; mobile robot moves the batch to inspection staging.',supRsn:'Robotic unload and batch transfer run autonomously. Attended in crawl to confirm the handoff to inspection staging.'},
   ]},
-  {g:'E. Inspection', rows:[
+  {g:'Stages 6 and 10. In-Process and Final Inspection', rows:[
     {id:'E.1',name:'Machine-vision cosmetic inspection',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'AI cosmetic defect detection; borderline flags get human review in crawl, then threshold-tuned (AE-05).',supRsn:'Vision inspection runs autonomously. Borderline cosmetic flags are sent for human review in crawl while detection thresholds are tuned. The review rate falls as the model is calibrated, and the step is autonomous from walk.'},
     {id:'E.2',name:'Automated thread gauging',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Motorized GO/NO-GO gauging on 100% of threaded holes (AE-14).'},
     {id:'E.3',name:'CMM dimensional inspection',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Robot-loaded coordinate measuring machine, 47-point program. Attended in crawl (AE-01).',supRsn:'Dimensional inspection is robot-loaded and autonomous. A technician attends in crawl to confirm fixturing and measurement repeatability before unattended runs.'},
     {id:'E.4',name:'SPC analysis',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'X-bar control charts on critical dimensions (CL-4).'},
   ]},
-  {g:'F. Deburring & Cleaning', rows:[
+  {g:'Stage 7. Deburring and Cleaning', rows:[
     {id:'F.1',name:'Robotic vibratory deburring',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Collaborative robot loads and unloads the deburr tumbler (AE-11).',supRsn:'Robotic deburr loading runs autonomously. Attended in crawl to confirm media behavior and part handling.'},
     {id:'F.2',name:'Robotic aqueous washing',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Four-stage robotic aqueous wash cycle.',supRsn:'The wash cycle runs autonomously. Attended in crawl to confirm cleanliness outcomes on early runs.'},
     {id:'F.3',name:'Automated water-break test',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Vision water-break test confirms cleanliness (AE-13).'},
   ]},
-  {g:'G. Surface Finishing (Bead Blast)', rows:[
-    {id:'G.1',name:'Internal transfer to bead-blast cell',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Mobile robot moves clean parts to the bead-blast cell.',supRsn:'Autonomous transfer to the finishing cell. Attended in crawl for first-run handoff confirmation.'},
-    {id:'G.2',name:'Robotic masking & bead blasting',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Robotic silicone-plug masking and 6-axis blast. Zero in-loop human step; attended in crawl.',supRsn:'Masking and blasting run autonomously with no in-loop human step. A technician is present in crawl only to backstop the enclosure and media system on early runs.'},
-    {id:'G.3',name:'Profilometer & plug removal',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Optical profilometer surface check and vision-guided plug removal.',supRsn:'Surface verification and plug removal run autonomously. Attended in crawl to confirm finish data and plug accounting.'},
-  ]},
-  {g:'H. Final Release & Shipping', rows:[
-    {id:'H.1',name:'Automated quality release',cat:'Governance',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Exception-free standard jobs auto-release (AE-06). The auto-release share grows as quality history builds.',supRsn:'Exception-free standard jobs release automatically. During crawl, more jobs are routed for a quality sign-off while release confidence is built, and the auto-release share grows with quality history. Regulated and exception jobs always require sign-off, tracked as a separate manual step (H.5).'},
-    {id:'H.2',name:'Robotic packaging',cat:'Production',who:'NEXT',crawl:'sup',walk:'auto',run:'auto',note:'Robotic bag, label, box, seal (AE-09).',supRsn:'Packaging runs autonomously. Attended in crawl to confirm pack quality and labeling on early runs.'},
-    {id:'H.3',name:'Shipping label & digital-thread archival',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Carrier-API label, tracking push, digital-thread archival.'},
+  {g:'Stage 12. Final Release, Packaging and Shipping', rows:[
+    {id:'H.1',name:'Automated quality release',cat:'Governance',who:'NEXT',crawl:'man',walk:'auto',run:'auto',note:'Manual quality sign-off in crawl while release confidence is built. Exception-free standard jobs auto-release from walk (AE-06).'},
+    {id:'H.2',name:'Robotic packaging',cat:'Production',who:'NEXT',crawl:'man',walk:'auto',run:'auto',note:'Manual pack, label, and seal in crawl. Robotic packaging from walk (AE-09).'},
+    {id:'H.3',name:'Shipping label & digital-thread archival',cat:'Production',who:'NEXT',crawl:'man',walk:'auto',run:'auto',note:'Manual label generation and dispatch in crawl. Carrier-API label, tracking push, and archival auto from walk.'},
     {id:'H.4',name:'Carrier pickup & custody transfer',cat:'Boundary',who:'NEXT',crawl:'man',walk:'man',run:'man',note:'Physical custody transfer to the carrier. Structural at every stage.'},
     {id:'H.5',name:'Regulatory / exception release sign-off',cat:'Governance',who:'NEXT',crawl:'man',walk:'man',run:'man',note:'Regulated or open-NCR jobs require quality-engineer sign-off. Persists by governance design.'},
   ]},
-  {g:'I. Archival & Continuous Improvement', rows:[
+  {g:'Stage 13 and Layer CL-02. Archival and Continuous Improvement', rows:[
     {id:'I.1',name:'Digital-thread archival',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Permanent archival of the full job record.'},
-    {id:'I.2',name:'Self-tuning estimation (within guard rails)',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Estimation self-tunes within 5 to 10% guard rails (AE-08).'},
-    {id:'I.3',name:'Tool-wear model retraining',cat:'Production',who:'NEXT',crawl:'auto',walk:'auto',run:'auto',note:'Tool-wear model retrains and redeploys on cross-validated gains (AE-07).'},
+    {id:'I.2',name:'Self-tuning estimation (within guard rails)',cat:'Production',who:'NEXT',crawl:'man',walk:'auto',run:'auto',note:'Manual estimation tuning in crawl. Self-tunes within 5 to 10% guard rails from walk (AE-08).'},
+    {id:'I.3',name:'Tool-wear model retraining',cat:'Production',who:'NEXT',crawl:'man',walk:'auto',run:'auto',note:'Manual model retraining in crawl. Auto retrain and redeploy on cross-validated gains from walk (AE-07).'},
     {id:'I.4',name:'Estimation / DFM changes beyond guard rails',cat:'Governance',who:'NEXT',crawl:'man',walk:'man',run:'man',note:'Parameter or rule changes beyond guard rails need human approval. Persists by governance design.'},
   ]},
-  {g:'Cross-Phase', rows:[
+  {g:'Cross-Phase (Continuous Layers and Background Processes)', rows:[
     {id:'X.1',name:'Machine maintenance & fault recovery',cat:'Maintenance',who:'NEXT',crawl:'man',walk:'man',run:'man',note:'Media, solution, blade, and gauge service plus physical fault recovery. Always human for safety; scheduled into no-production windows as runs go unattended.'},
     {id:'X.2',name:'NCR evaluation & disposition',cat:'Governance',who:'NEXT',crawl:'man',walk:'man',run:'man',note:'Root-cause and customer-impact judgment on nonconformances.'},
     {id:'X.3',name:'Customer concession (use-as-is)',cat:'Customer',who:'Customer',crawl:'man',walk:'man',run:'man',note:'Use-as-is on out-of-tolerance parts needs customer authority.'},
     {id:'X.4',name:'Exception handling at automated stations',cat:'Maintenance',who:'NEXT',crawl:'man',walk:'sup',run:'sup',note:'On-floor intervention for jams and faults in crawl; shifts to remote on-call dispatch once runs go unattended.',supRsn:'Common faults recover autonomously. In crawl, a technician is on the floor for immediate intervention. From walk onward this shifts to remote on-call dispatch, since runs are unattended.'},
   ]},
 ];
+
 const CWR_BADGE = {man:'MANUAL',sup:'SUPERVISED',auto:'AUTONOMOUS'};
 const PHASE_LABEL = {crawl:'Crawl',walk:'Walk',run:'Run'};
